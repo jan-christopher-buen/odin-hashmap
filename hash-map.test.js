@@ -133,3 +133,70 @@ test('map instances own independent chains and counts', () => {
   assert.equal(second.get('a'), 2);
   assert.equal(second.length(), 1);
 });
+
+test('empty enumerations return fresh empty arrays', () => {
+  const map = new HashMap();
+  for (const method of ['keys', 'values', 'entries']) {
+    assert.deepEqual(map[method](), []);
+    assert.notEqual(map[method](), map[method]());
+  }
+});
+
+test('enumeration includes collisions and duplicate values without assuming order', () => {
+  const map = new HashMap();
+  map.set('a', 'same');
+  map.set('q', 'same');
+  map.set('A', 'other');
+  map.set('z', undefined);
+  assert.deepEqual(map.keys().sort(), ['A', 'a', 'q', 'z']);
+  assert.deepEqual(map.values().sort(), ['other', 'same', 'same', undefined]);
+  assert.deepEqual(map.entries().sort(([a], [b]) => a.localeCompare(b)),
+    [['a', 'same'], ['A', 'other'], ['q', 'same'], ['z', undefined]].sort(([a], [b]) => a.localeCompare(b)));
+});
+
+test('returned arrays and entry pairs cannot change stored keys or values', () => {
+  const map = new HashMap();
+  const object = { count: 1 };
+  map.set('a', object);
+  map.set('q', null);
+  const keys = map.keys();
+  keys.fill('changed');
+  const values = map.values();
+  values.fill('changed');
+  const entries = map.entries();
+  const objectPair = entries.find(([key]) => key === 'a');
+  assert.equal(objectPair[1], object);
+  objectPair[0] = 'changed';
+  objectPair[1] = 'changed';
+  entries.pop();
+  assert.equal(map.get('a'), object);
+  assert.equal(map.get('q'), null);
+  assert.equal(map.has('changed'), false);
+  assert.equal(map.length(), 2);
+  const firstPairs = map.entries();
+  const secondPairs = map.entries();
+  assert.notEqual(firstPairs, secondPairs);
+  assert.notEqual(firstPairs[0], secondPairs[0]);
+  map.get('a').count = 2;
+  assert.equal(object.count, 2);
+});
+
+test('clear empties every chain, retains configuration, and allows reuse', () => {
+  const map = new HashMap();
+  map.set('a', 1);
+  map.set('q', 2);
+  map.set('A', 3);
+  assert.equal(map.clear(), undefined);
+  assert.equal(map.length(), 0);
+  assert.equal(map.capacity, 16);
+  assert.equal(map.loadFactor, 0.75);
+  assert.deepEqual(map.keys(), []);
+  assert.deepEqual(map.values(), []);
+  assert.deepEqual(map.entries(), []);
+  assert.equal(map.has('q'), false);
+  assert.equal(map.remove('a'), false);
+  map.clear();
+  map.set('q', undefined);
+  assert.equal(map.has('q'), true);
+  assert.equal(map.length(), 1);
+});

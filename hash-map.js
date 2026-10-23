@@ -69,6 +69,35 @@ export class HashMap {
     return false;
   }
 
+  clear() {
+    this.#buckets = new Array(this.capacity).fill(null);
+    this.#count = 0;
+  }
+
+  keys() {
+    return this.#collect((node) => node.key);
+  }
+
+  values() {
+    return this.#collect((node) => node.value);
+  }
+
+  entries() {
+    return this.#collect((node) => [node.key, node.value]);
+  }
+
+  #collect(select) {
+    const result = [];
+    for (let index = 0; index < this.capacity; index += 1) {
+      let current = this.#readBucket(index);
+      while (current !== null) {
+        result.push(select(current));
+        current = current.next;
+      }
+    }
+    return result;
+  }
+
   #findNode(key) {
     let current = this.#readBucket(this.hash(key));
     while (current !== null) {
