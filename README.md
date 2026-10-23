@@ -123,4 +123,4 @@ The table occupies O(m + n) structural space, excluding key/value payloads. Arra
 - `hash-map.test.js` and `hash-set.test.js`: public-behavior tests using `node:test` and `node:assert/strict`.
 - `package.json` and `.gitignore`: ES module scripts and dependency/coverage/log exclusions.
 
-Local verification with Node v24.22.0: **31 tests passed, 0 failed** using `npm test`. Coverage includes known collisions, removal across chains, invalid keys, unrestricted values, independent instances, enumeration isolation, threshold updates, repeated growth, and clear/reuse. `npm start` passes its demo assertions and shows the capacity/load milestones above. Bucket bounds were also reviewed in the implementation; public-behavior tests alone do not prove internal guards.
+Local verification with Node v24.22.0: **31 tests passed, 0 failed** using `npm test`. Coverage includes known collisions, removal across chains, invalid keys, unrestricted values, independent instances, enumeration isolation, threshold updates, repeated growth, and clear/reuse. `npm start` passes its demo assertions and shows the capacity/load milestones above.
