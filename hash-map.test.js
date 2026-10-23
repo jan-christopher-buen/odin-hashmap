@@ -200,3 +200,86 @@ test('clear empties every chain, retains configuration, and allows reuse', () =>
   assert.equal(map.has('q'), true);
   assert.equal(map.length(), 1);
 });
+
+test('exact threshold stays at 16, updates do not grow, and key 13 rehashes', () => {
+  const map = new HashMap();
+  const pairs = [['a', 1], ['q', 2], ['A', 3], ['b', 4], ['c', 5], ['d', 6],
+    ['e', 7], ['f', 8], ['g', 9], ['h', 10], ['i', 11], ['j', 12]];
+  for (const [key, value] of pairs) map.set(key, value);
+  assert.equal(map.length(), 12);
+  assert.equal(map.capacity, 16);
+  assert.equal(map.length() / map.capacity, 0.75);
+  map.set('q', 'updated');
+  map.set('a', undefined);
+  assert.equal(map.length(), 12);
+  assert.equal(map.capacity, 16);
+  map.set('moon', 'silver');
+  assert.equal(map.length(), 13);
+  assert.equal(map.capacity, 32);
+  assert.equal(map.length() / map.capacity, 0.40625);
+  assert.equal(map.hash('a'), 1);
+  assert.equal(map.hash('q'), 17);
+  assert.equal(map.get('a'), undefined);
+  assert.equal(map.has('a'), true);
+  assert.equal(map.get('q'), 'updated');
+  for (const [key, value] of pairs.slice(2)) assert.equal(map.get(key), value);
+  assert.equal(map.get('moon'), 'silver');
+  map.set('moon', 'bright silver');
+  assert.equal(map.length(), 13);
+  assert.equal(map.capacity, 32);
+  assert.equal(map.get('moon'), 'bright silver');
+});
+
+test('multiple expansions preserve entries, references, and CRUD behavior', () => {
+  const map = new HashMap();
+  const object = { data: 'shared' };
+  map.set('object', object);
+  for (let index = 0; index < 100; index += 1) map.set(`key-${index}`, index);
+  assert.equal(map.length(), 101);
+  assert.equal(map.capacity, 256);
+  for (let index = 0; index < 100; index += 1) {
+    assert.equal(map.get(`key-${index}`), index);
+    assert.equal(map.has(`key-${index}`), true);
+  }
+  assert.equal(map.get('object'), object);
+  map.set('key-50', 'changed');
+  assert.equal(map.get('key-50'), 'changed');
+  assert.equal(map.remove('key-0'), true);
+  assert.equal(map.remove('key-99'), true);
+  assert.equal(map.remove('missing'), false);
+  map.set('new-key', false);
+  assert.equal(map.length(), 100);
+  assert.equal(map.capacity, 256);
+  const expected = [['object', object], ['new-key', false]];
+  for (let index = 1; index < 99; index += 1) {
+    expected.push([`key-${index}`, index === 50 ? 'changed' : index]);
+  }
+  const byKey = ([a], [b]) => a.localeCompare(b);
+  assert.deepEqual(map.entries().sort(byKey), expected.sort(byKey));
+  assert.deepEqual(map.keys().sort(), expected.map(([key]) => key).sort());
+  assert.deepEqual(map.values().sort(), expected.map(([, value]) => value).sort());
+});
+
+test('clear retains expanded capacity and does not affect another map', () => {
+  const map = new HashMap();
+  const other = new HashMap();
+  other.set('safe', 42);
+  for (let index = 0; index < 25; index += 1) map.set(`key-${index}`, index);
+  assert.equal(map.capacity, 64);
+  assert.equal(map.clear(), undefined);
+  assert.equal(map.length(), 0);
+  assert.equal(map.capacity, 64);
+  assert.equal(map.loadFactor, 0.75);
+  assert.deepEqual(map.entries(), []);
+  assert.equal(map.has('key-0'), false);
+  assert.equal(map.get('key-24'), undefined);
+  assert.equal(map.remove('key-10'), false);
+  map.set('a', 1);
+  map.set('q', 2);
+  assert.equal(map.get('a'), 1);
+  assert.equal(map.get('q'), 2);
+  assert.equal(map.length(), 2);
+  assert.equal(map.capacity, 64);
+  assert.equal(other.capacity, 16);
+  assert.equal(other.get('safe'), 42);
+});

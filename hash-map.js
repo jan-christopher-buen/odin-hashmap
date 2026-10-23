@@ -41,6 +41,7 @@ export class HashMap {
     const node = new MapNode(key, value, this.#readBucket(index));
     this.#writeBucket(index, node);
     this.#count += 1;
+    if (this.#count / this.capacity > this.loadFactor) this.#grow();
   }
 
   get(key) {
@@ -84,6 +85,22 @@ export class HashMap {
 
   entries() {
     return this.#collect((node) => [node.key, node.value]);
+  }
+
+  #grow() {
+    const oldBuckets = this.#buckets;
+    this.#buckets = new Array(oldBuckets.length * 2).fill(null);
+    for (let index = 0; index < oldBuckets.length; index += 1) {
+      let current = this.#readBucket(index, oldBuckets);
+      while (current !== null) {
+        // Save the old successor before relinking this node into its new bucket.
+        const next = current.next;
+        const newIndex = this.hash(current.key);
+        current.next = this.#readBucket(newIndex);
+        this.#writeBucket(newIndex, current);
+        current = next;
+      }
+    }
   }
 
   #collect(select) {
